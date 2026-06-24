@@ -23,7 +23,7 @@ const MODELS = new Set(['sonnet', 'opus', 'haiku']);
 
 // Kode pairing: pengaman supaya hanya website yang kamu beri kode ini bisa
 // memakai bridge Claude di komputermu. Dicetak saat start; ditempel ke website.
-const PAIR_TOKEN = (process.env.PAIR_TOKEN || crypto.randomBytes(4).toString('hex')).toUpperCase();
+const PAIR_TOKEN = (process.env.PAIR_TOKEN || crypto.randomBytes(8).toString('hex')).toUpperCase();
 
 /* ============================================================
    RUBRIK ANALISA — logika "Upwork Consultant Expert".
@@ -130,17 +130,45 @@ function extractJSON(raw) {
   // Buang ```json ... ``` atau ``` ... ```
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) s = fence[1].trim();
-  // Ambil dari kurawal pertama sampai kurawal terakhir yang seimbang.
+  // Jalur cepat: kalau memang JSON murni, langsung parse.
+  try { return JSON.parse(s); } catch { /* lanjut ke pemindai */ }
+  // Pemindai kedalaman kurawal: ambil objek seimbang PERTAMA dari '{',
+  // hormati string (abaikan kurawal di dalam string) → tahan terhadap
+  // narasi pembungkus atau kurawal nyasar di dalam nilai string.
   const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error('Claude tidak mengembalikan JSON yang valid.');
+  if (start === -1) throw new Error('Claude tidak mengembalikan JSON yang valid.');
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') { if (--depth === 0) return JSON.parse(s.slice(start, i + 1)); }
   }
-  const json = s.slice(start, end + 1);
-  return JSON.parse(json);
+  throw new Error('Claude tidak mengembalikan JSON yang valid.');
 }
 
 function truncate(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+// Hentikan proses anak beserta turunannya. Di Windows (shell:true) `claude`
+// asli adalah cucu dari cmd.exe; child.kill() saja meninggalkannya yatim &
+// tetap memakai kuota — pakai taskkill /T untuk membunuh seluruh pohon.
+function killTree(child) {
+  try {
+    if (process.platform === 'win32' && child.pid) {
+      spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+    } else { child.kill(); }
+  } catch { try { child.kill(); } catch {} }
+}
+
+// Tulis prompt ke stdin anak dengan aman (broken pipe / EPIPE tidak meng-crash bridge).
+function feedStdin(child, payload) {
+  child.stdin.on('error', () => {});
+  try { child.stdin.write(payload); child.stdin.end(); } catch {}
+}
 
 // Bangun argumen claude (dipakai mode biasa & streaming).
 function claudeArgs(model, stream) {
@@ -159,7 +187,7 @@ function runClaude(userPrompt, model, rubric) {
       windowsHide: true,
     });
     let out = '', err = '';
-    const killer = setTimeout(() => { child.kill(); reject(new Error('Timeout 300s — Claude tidak merespon (analisa profil + web bisa memakan waktu).')); }, 300000);
+    const killer = setTimeout(() => { killTree(child); reject(new Error('Timeout 300s, Claude tidak merespon (analisa profil + web bisa memakan waktu).')); }, 300000);
     child.stdout.on('data', d => (out += d));
     child.stderr.on('data', d => (err += d));
     child.on('error', e => {
@@ -170,15 +198,12 @@ function runClaude(userPrompt, model, rubric) {
     });
     child.on('close', code => {
       clearTimeout(killer);
-      if (code === 0 && out.trim()) {
-        try { resolve(extractJSON(out)); }
-        catch (e) { reject(new Error(e.message + ' (output mentah: ' + out.slice(0, 200).replace(/\s+/g, ' ') + '…)')); }
-      } else {
-        reject(new Error(err.trim() || ('claude keluar dengan kode ' + code)));
-      }
+      if (code !== 0) return reject(new Error(err.trim() || ('claude keluar dengan kode ' + code)));
+      if (!out.trim()) return reject(new Error(err.trim() || 'Claude tidak mengembalikan output. Pastikan sudah login (jalankan `claude` sekali), lalu coba lagi.'));
+      try { resolve(extractJSON(out)); }
+      catch (e) { reject(new Error(e.message + ' (output mentah: ' + out.slice(0, 200).replace(/\s+/g, ' ') + '…)')); }
     });
-    child.stdin.write(payload);
-    child.stdin.end();
+    feedStdin(child, payload);
   });
 }
 
@@ -324,13 +349,13 @@ const server = http.createServer(async (req, res) => {
       const t0 = Date.now();
       let buf = '', err = '', finalText = null, tokens = 0, done = false;
       const killer = setTimeout(() => {
-        if (done) return; done = true; try { child.kill(); } catch {}
-        sse('error', { error: 'Timeout 300s — Claude tidak merespon.' }); res.end();
+        if (done) return; done = true; killTree(child);
+        sse('error', { error: 'Timeout 300s, Claude tidak merespon.' }); res.end();
       }, 300000);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
       const finish = () => { clearTimeout(killer); clearInterval(ping); };
 
-      req.on('close', () => { if (!done) { done = true; finish(); try { child.kill(); } catch {} } });
+      req.on('close', () => { if (!done) { done = true; finish(); killTree(child); } });
 
       child.stdout.on('data', d => {
         buf += d.toString();
@@ -378,7 +403,7 @@ const server = http.createServer(async (req, res) => {
         }
         res.end();
       });
-      child.stdin.write(payload); child.stdin.end();
+      feedStdin(child, payload);
     });
     return;
   }
