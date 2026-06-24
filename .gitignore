@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Rubrik audit kustom yang diedit user saat runtime (per-komputer)
+rubric.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/

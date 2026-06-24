@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Upwork Profile Analyzer — AI (login Claude lokal)</title>
+<style>
+  :root{
+    --green:#14a800; --green-d:#108a00; --ink:#0f1419; --muted:#5e6b73;
+    --line:#e4e9ec; --bg:#f6f8f9; --card:#ffffff;
+    --good:#14a800; --warn:#e08600; --crit:#d8443c; --blue:#1f57c3;
+    --shadow:0 1px 2px rgba(16,24,32,.04),0 8px 24px rgba(16,24,32,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:var(--bg); line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:22px 18px 80px}
+  a{color:var(--blue)}
+  h1,h2,h3{line-height:1.2; margin:0}
+  .small{font-size:13px; color:var(--muted)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  /* Header */
+  header.top{display:flex; align-items:center; gap:12px; margin:8px 0 18px}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--green),#37c400);
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:19px;box-shadow:var(--shadow)}
+  header.top h1{font-size:21px}
+  header.top .sub{font-size:12.5px;color:var(--muted)}
+  .statusbadge{margin-left:auto;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;
+    border:1px solid var(--line); background:#fff; white-space:nowrap}
+  .statusbadge.ok{color:var(--green);border-color:#cdeac6;background:#f1f9ee}
+  .statusbadge.off{color:var(--warn);border-color:#f3e2c2;background:#fff8ec}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:18px; margin-bottom:16px}
+  .card h2{font-size:15px;letter-spacing:.01em;margin-bottom:4px}
+  .card .hint{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+
+  label.fld{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 6px}
+  input[type=text],input[type=url],textarea,select{
+    width:100%; font:inherit; color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:11px; padding:11px 13px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(20,168,0,.12)}
+  textarea{min-height:150px;resize:vertical;line-height:1.5}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row > *{flex:1;min-width:0}
+
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
+    border-radius:11px;padding:10px 16px;font-weight:600;transition:transform .05s, background .15s, border-color .15s}
+  button:active{transform:translateY(1px)}
+  button.primary{background:var(--green);border-color:var(--green);color:#fff}
+  button.primary:hover{background:var(--green-d)}
+  button.primary:disabled{opacity:.55;cursor:not-allowed}
+  button.ghost{background:#fff}
+  button.tiny{padding:5px 10px;font-size:12px;border-radius:9px;font-weight:600}
+
+  .linkbtn{background:none;border:none;color:var(--blue);padding:0;font-weight:600;font-size:12.5px;cursor:pointer}
+  .collapse{margin-top:12px}
+  .collapse[hidden]{display:none}
+
+  /* Connect (pairing) */
+  #connectCard ol{margin:8px 0 12px;padding-left:18px;font-size:13px;color:var(--muted)}
+  #connectCard ol b{color:var(--ink)}
+
+  /* Loading */
+  #loading{display:none;align-items:center;gap:13px;justify-content:center;padding:26px}
+  #loading.show{display:flex}
+  .spinner{width:26px;height:26px;border-radius:50%;border:3px solid #e3ede0;border-top-color:var(--green);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Result */
+  #result{display:none}
+  #result.show{display:block}
+  .hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  .gauge{position:relative;width:128px;height:128px;flex:0 0 auto}
+  .gauge svg{transform:rotate(-90deg)}
+  .gauge .num{position:absolute;inset:0;display:grid;place-items:center;flex-direction:column;text-align:center}
+  .gauge .num b{font-size:34px;line-height:1;display:block}
+  .gauge .num span{font-size:11px;color:var(--muted)}
+  .hero .verdict{flex:1;min-width:220px}
+  .hero .verdict h2{font-size:18px;margin-bottom:6px}
+  .hero .verdict p{margin:0;font-size:14px;color:var(--muted)}
+
+  .sect-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px}
+
+  .pill-list{display:flex;flex-direction:column;gap:8px}
+  .strength{display:flex;gap:9px;align-items:flex-start;background:#f1f9ee;border:1px solid #d8edd0;border-radius:11px;padding:10px 12px;font-size:13.5px}
+  .strength .ic{color:var(--good);font-weight:800}
+
+  .dim{border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px}
+  .dim .head{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .dim .nm{font-weight:700;font-size:13.5px}
+  .dim .sc{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .dim .bar{height:7px;border-radius:5px;background:#eef2f4;overflow:hidden;margin-bottom:9px}
+  .dim .bar > i{display:block;height:100%;border-radius:5px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .s-good{background:var(--good)} .s-warn{background:var(--warn)} .s-crit{background:var(--crit)}
+  .dim .find{font-size:13px;margin:0 0 6px}
+  .dim .fix{font-size:13px;margin:0;color:#0a5b00;background:#f3faf0;border-left:3px solid var(--good);padding:7px 10px;border-radius:0 8px 8px 0}
+  .dim .fix b{color:#0a5b00}
+
+  .crit{border:1px solid #f1cfcc;background:#fdf4f3;border-radius:12px;padding:12px 13px;margin-bottom:9px}
+  .crit h3{font-size:13.5px;color:var(--crit);margin-bottom:3px}
+  .crit p{font-size:13px;margin:0;color:#7a2b25}
+
+  .callout{border-radius:12px;padding:13px 15px;margin-bottom:10px;font-size:13.5px}
+  .callout.op{background:#eef4ff;border:1px solid #cfe0fb}
+  .callout.step{background:#fff8ec;border:1px solid #f3e2c2}
+  .callout b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .callout.op b{color:var(--blue)} .callout.step b{color:var(--warn)}
+
+  .rw{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px}
+  .rw .rwhead{display:flex;align-items:center;margin-bottom:9px}
+  .rw .rwhead h3{font-size:13px;font-weight:700}
+  .rw .rwhead .tiny{margin-left:auto}
+  .titleopt{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px dashed var(--line)}
+  .titleopt:first-of-type{border-top:none}
+  .titleopt .t{flex:1;font-size:13.5px;font-weight:600}
+  .biobox{white-space:pre-wrap;font-size:13.5px;background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{background:#eef4ff;border:1px solid #d7e3fb;color:#1f3f8a;font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px}
+
+  .err{background:#fdf4f3;border:1px solid #f1cfcc;color:#a3322a;border-radius:11px;padding:12px 14px;font-size:13.5px;display:none;margin-top:12px}
+  .err.show{display:block}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f1419;color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+  .toast.show{opacity:1}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="logo">U</div>
+    <div>
+      <h1>Upwork Profile Analyzer</h1>
+      <div class="sub">Audit profil + skor + rewrite — ditenagai Claude di komputermu (tanpa API key)</div>
+    </div>
+    <div class="statusbadge off" id="statusBadge">● mengecek…</div>
+  </header>
+
+  <!-- Connect / pairing (muncul saat dibuka dari website, belum terhubung) -->
+  <div class="card" id="connectCard" style="display:none">
+    <h2>Hubungkan Claude lokal</h2>
+    <div class="hint">Mesin AI memakai Claude Code di komputermu. Nyalakan bridge lalu tempel kodenya.</div>
+    <ol>
+      <li>Jalankan launcher: <b>start-analyzer.bat</b> (Windows) atau <b>start-analyzer.command</b> (Mac).</li>
+      <li>Salin <b>KODE PAIRING</b> yang muncul di terminal.</li>
+      <li>Tempel di bawah, klik <b>Hubungkan</b>.</li>
+    </ol>
+    <div class="row">
+      <input type="text" id="pairCode" placeholder="cth: A1B2C3D4" style="text-transform:uppercase" />
+      <button class="primary" id="pairBtn" style="flex:0 0 auto">Hubungkan</button>
+    </div>
+    <div class="small" id="pairStatus" style="margin-top:8px"></div>
+  </div>
+
+  <!-- Input -->
+  <div class="card">
+    <h2>Profil yang mau dianalisa</h2>
+    <div class="hint">Tempel link profil Upwork. (Upwork kadang memblok akses otomatis — kalau hasil kosong, pakai opsi tempel teks di bawah.)</div>
+
+    <label class="fld" for="url">Link profil Upwork</label>
+    <input type="url" id="url" placeholder="https://www.upwork.com/freelancers/~xxxxxxxx" autocomplete="off" />
+
+    <button class="linkbtn" id="toggleText" style="margin-top:11px">+ atau tempel teks profil (lebih andal)</button>
+    <div class="collapse" id="textWrap" hidden>
+      <label class="fld" for="profileText" style="margin-top:6px">Teks profil (judul, overview/bio, skills, stats, services)</label>
+      <textarea id="profileText" placeholder="Tempel judul, overview/bio, daftar skill, JSS, jumlah jobs &amp; review, jam terbang, negara, dan services di sini…"></textarea>
+    </div>
+
+    <div class="row" style="margin-top:13px;align-items:flex-end">
+      <div style="flex:0 0 200px">
+        <label class="fld" for="model">Model</label>
+        <select id="model">
+          <option value="sonnet">Sonnet — cepat &amp; seimbang</option>
+          <option value="opus">Opus — analisa paling dalam</option>
+        </select>
+      </div>
+      <div style="flex:1"></div>
+      <button class="primary" id="analyzeBtn" style="flex:0 0 auto;padding:12px 22px">Analisa Profil</button>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>
+      <div style="font-weight:600">Claude sedang menganalisa profil…</div>
+      <div class="small" id="loadingNote">Menelusuri data profil + menilai 9 dimensi. Bisa 30–120 detik.</div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result">
+    <div class="card">
+      <div class="hero">
+        <div class="gauge">
+          <svg width="128" height="128" viewBox="0 0 128 128">
+            <circle cx="64" cy="64" r="56" fill="none" stroke="#eef2f4" stroke-width="12"/>
+            <circle id="gaugeArc" cx="64" cy="64" r="56" fill="none" stroke="#14a800" stroke-width="12"
+              stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="351.86"/>
+          </svg>
+          <div class="num"><div><b id="scoreNum">0</b><span>/ 100</span></div></div>
+        </div>
+        <div class="verdict">
+          <h2 id="verdict">—</h2>
+          <p id="summary"></p>
+        </div>
+      </div>
+
+      <div id="strengthsBlock">
+        <div class="sect-title">Kekuatan — jangan diubah</div>
+        <div class="pill-list" id="strengths"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sect-title" style="margin-top:0">Penilaian per dimensi</div>
+      <div id="dimensions"></div>
+    </div>
+
+    <div class="card" id="critBlock">
+      <div class="sect-title" style="margin-top:0">Masalah paling kritis</div>
+      <div id="criticalProblems"></div>
+      <div class="callout op" id="opBlock"><b>Peluang terbesar</b><span id="opportunity"></span></div>
+      <div class="callout step" id="stepBlock"><b>Langkah pertama hari ini</b><span id="firstStep"></span></div>
+    </div>
+
+    <div class="card" id="rewriteBlock">
+      <div class="sect-title" style="margin-top:0">Rewrite siap pakai</div>
+
+      <div class="rw">
+        <div class="rwhead"><h3>Judul baru (pilih satu)</h3></div>
+        <div id="newTitle"></div>
+      </div>
+
+      <div class="rw">
+        <div class="rwhead"><h3>Overview / Bio (client-first)</h3>
+          <button class="tiny ghost" id="copyBio">Salin bio</button></div>
+        <div class="biobox" id="newBio"></div>
+      </div>
+
+      <div class="rw">
+        <div class="rwhead"><h3>Skill tags</h3>
+          <button class="tiny ghost" id="copyTags">Salin semua</button></div>
+        <div class="chips" id="skillTags"></div>
+      </div>
+
+      <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:6px">
+        <button class="ghost" id="downloadBtn">⬇ Unduh laporan (.txt)</button>
+        <button class="ghost" id="copyAllBtn">Salin seluruh laporan</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Privasi: profil & hasil tidak dikirim ke server pihak ketiga — hanya ke Claude di komputermu sendiri.</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== Helpers ===== */
+const $ = id => document.getElementById(id);
+let LAST = null; // hasil terakhir (untuk unduh/salin)
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600);}
+function esc(s){return String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+async function copy(text){try{await navigator.clipboard.writeText(text);toast("Tersalin ✓");}catch{toast("Gagal menyalin");}}
+
+/* ===== Bridge ke Claude lokal (localhost) + kode pairing ===== */
+// Jika halaman ini DILAYANI oleh bridge (localhost), token disuntik & alamat = relatif.
+// Jika dibuka dari website (Vercel), bridge ada di http://localhost:8788 dan butuh kode pairing.
+const BRIDGE = (typeof window.__BRIDGE_LOCAL__ !== "undefined") ? "" : "http://localhost:8788";
+let PAIR = (window.__BRIDGE_TOKEN__ || localStorage.getItem("upwa_pair") || "").toUpperCase();
+function setPair(code){PAIR=(code||"").trim().toUpperCase();localStorage.setItem("upwa_pair",PAIR);}
+function authHeaders(extra){const h=Object.assign({},extra||{});if(PAIR)h["X-Pair-Token"]=PAIR;return h;}
+
+let BRIDGE_UP=false, PAIR_OK=false;
+async function checkBridge(){
+  const badge=$("statusBadge");
+  try{const r=await fetch(BRIDGE+"/health",{cache:"no-store"});BRIDGE_UP=r.ok;}catch{BRIDGE_UP=false;}
+  if(!BRIDGE_UP){
+    PAIR_OK=false;
+    badge.className="statusbadge off";
+    badge.textContent = window.__BRIDGE_LOCAL__ ? "● bridge mati" : "● bridge lokal mati";
+    updateConnectCard(); return false;
+  }
+  PAIR_OK=false;
+  if(PAIR){try{const r=await fetch(BRIDGE+"/ping-auth",{cache:"no-store",headers:authHeaders()});PAIR_OK=r.ok;}catch{PAIR_OK=false;}}
+  badge.className = PAIR_OK ? "statusbadge ok" : "statusbadge off";
+  badge.textContent = PAIR_OK ? "● terhubung" : "● belum terhubung";
+  updateConnectCard();
+  return PAIR_OK;
+}
+function updateConnectCard(){
+  // Sembunyikan kartu pairing saat dibuka lokal (sudah auto-pair) atau sudah terhubung.
+  const need = !window.__BRIDGE_LOCAL__ && !PAIR_OK;
+  $("connectCard").style.display = need ? "" : "none";
+  if(PAIR) $("pairCode").value = PAIR;
+}
+async function doConnect(){
+  setPair($("pairCode").value);
+  $("pairStatus").textContent="Menghubungkan…";
+  await checkBridge();
+  $("pairStatus").innerHTML = PAIR_OK
+    ? '<b style="color:#14a800">Terhubung ✓</b>'
+    : (BRIDGE_UP ? '<b style="color:#c0392b">Kode salah — cek lagi di terminal.</b>'
+                 : '<b style="color:#c0392b">Bridge belum jalan. Jalankan start-analyzer.bat dulu.</b>');
+}
+
+/* ===== Analisa ===== */
+async function analyze(){
+  const url=$("url").value.trim();
+  const profileText=$("profileText").value.trim();
+  const model=$("model").value;
+  $("err").classList.remove("show");
+
+  if(!url && !profileText){ showErr("Isi link profil Upwork, atau tempel teks profilnya."); return; }
+
+  // Pastikan bridge & pairing siap.
+  const ok=await checkBridge();
+  if(!BRIDGE_UP){
+    showErr('⚠ Bridge Claude lokal belum jalan.\nJalankan start-analyzer.bat, salin KODE PAIRING, lalu klik "Hubungkan Claude lokal".');
+    return;
+  }
+  if(!ok){ showErr('⚠ Belum terhubung. Tempel KODE PAIRING dari terminal di kotak "Hubungkan Claude lokal".'); return; }
+
+  setBusy(true);
+  try{
+    const r=await fetch(BRIDGE+"/analyze",{
+      method:"POST",
+      headers:authHeaders({"Content-Type":"application/json"}),
+      body:JSON.stringify({url,profileText,model})
+    });
+    const data=await r.json();
+    if(!r.ok || data.error){ throw new Error(data.error || ("HTTP "+r.status)); }
+    render(data.result);
+  }catch(e){
+    showErr("Gagal: "+e.message);
+  }finally{
+    setBusy(false);
+  }
+}
+function setBusy(b){
+  $("analyzeBtn").disabled=b;
+  $("analyzeBtn").textContent=b?"Menganalisa…":"Analisa Profil";
+  $("loading").classList.toggle("show",b);
+  if(b) $("result").classList.remove("show");
+}
+function showErr(msg){const e=$("err");e.textContent=msg;e.classList.add("show");}
+
+/* ===== Render hasil ===== */
+function scoreColor(s){ if(s>=75)return"#14a800"; if(s>=50)return"#e08600"; return"#d8443c"; }
+function statusClass(st){ return st==="good"?"s-good":st==="warn"||st==="warning"?"s-warn":"s-crit"; }
+function statusColor(st){ return st==="good"?"#14a800":(st==="warn"||st==="warning")?"#e08600":"#d8443c"; }
+
+function render(r){
+  if(!r){ showErr("Hasil kosong dari Claude."); return; }
+  LAST=r;
+
+  if(r.profileFound===false){
+    showErr("Claude tidak bisa mengambil cukup data profil dari link.\n"+(r.summary||"Coba pakai opsi “tempel teks profil”.")+"\n\nBuka “+ atau tempel teks profil”, salin isi profil Upwork, lalu analisa lagi.");
+    $("textWrap").hidden=false; $("toggleText").textContent="− tutup teks profil";
+    return;
+  }
+
+  const score=Math.max(0,Math.min(100,Math.round(r.score||0)));
+  // Gauge
+  const C=2*Math.PI*56; // ~351.86
+  $("gaugeArc").setAttribute("stroke-dasharray",C.toFixed(2));
+  $("gaugeArc").setAttribute("stroke-dashoffset",(C*(1-score/100)).toFixed(2));
+  $("gaugeArc").setAttribute("stroke",scoreColor(score));
+  animateNum($("scoreNum"),score);
+  $("verdict").textContent=r.verdict||"";
+  $("summary").textContent=r.summary||"";
+
+  // Strengths
+  const sb=$("strengths");
+  const str=Array.isArray(r.strengths)?r.strengths.filter(Boolean):[];
+  $("strengthsBlock").style.display = str.length?"":"none";
+  sb.innerHTML=str.map(s=>`<div class="strength"><span class="ic">✓</span><span>${esc(s)}</span></div>`).join("");
+
+  // Dimensions
+  const dims=Array.isArray(r.dimensions)?r.dimensions:[];
+  $("dimensions").innerHTML=dims.map(d=>{
+    const max=d.max||100, sc=d.score||0, pct=Math.max(0,Math.min(100,Math.round(sc/max*100)));
+    return `<div class="dim">
+      <div class="head">
+        <span class="dot ${statusClass(d.status)}"></span>
+        <span class="nm">${esc(d.name)}</span>
+        <span class="sc">${sc} / ${max}</span>
+      </div>
+      <div class="bar"><i style="width:${pct}%;background:${statusColor(d.status)}"></i></div>
+      <p class="find">${esc(d.finding)}</p>
+      ${d.fix?`<p class="fix"><b>Perbaiki:</b> ${esc(d.fix)}</p>`:""}
+    </div>`;
+  }).join("");
+
+  // Critical problems
+  const cp=Array.isArray(r.criticalProblems)?r.criticalProblems:[];
+  $("criticalProblems").innerHTML=cp.map((c,i)=>`<div class="crit"><h3>${i+1}. ${esc(c.title)}</h3><p>${esc(c.detail)}</p></div>`).join("");
+  $("critBlock").style.display=(cp.length||r.biggestOpportunity||r.firstStep)?"":"none";
+  $("opBlock").style.display=r.biggestOpportunity?"":"none";
+  $("stepBlock").style.display=r.firstStep?"":"none";
+  $("opportunity").textContent=r.biggestOpportunity||"";
+  $("firstStep").textContent=r.firstStep||"";
+
+  // Rewrites
+  const rw=r.rewrites||{};
+  const titles=Array.isArray(rw.newTitle)?rw.newTitle.filter(Boolean):[];
+  $("newTitle").innerHTML=titles.map(t=>`<div class="titleopt"><span class="t">${esc(t)}</span><button class="tiny ghost" data-copy="${esc(t)}">Salin</button></div>`).join("");
+  $("newBio").textContent=rw.newBio||"";
+  const tags=Array.isArray(rw.skillTags)?rw.skillTags.filter(Boolean):[];
+  $("skillTags").innerHTML=tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("");
+  $("rewriteBlock").style.display=(titles.length||rw.newBio||tags.length)?"":"none";
+
+  $("result").classList.add("show");
+  $("result").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function animateNum(el,target){
+  let cur=0; const step=Math.max(1,Math.round(target/28));
+  const t=setInterval(()=>{cur+=step; if(cur>=target){cur=target;clearInterval(t);} el.textContent=cur;},18);
+}
+
+/* ===== Laporan teks (unduh / salin) ===== */
+function reportText(r){
+  if(!r) return "";
+  const L=[];
+  L.push("UPWORK PROFILE ANALYZER — LAPORAN");
+  L.push("Skor: "+(r.score||0)+"/100");
+  if(r.verdict)L.push("Verdict: "+r.verdict);
+  if(r.summary)L.push("\nRingkasan:\n"+r.summary);
+  if(r.strengths&&r.strengths.length)L.push("\nKEKUATAN:\n- "+r.strengths.join("\n- "));
+  if(r.dimensions&&r.dimensions.length){
+    L.push("\nPENILAIAN PER DIMENSI:");
+    r.dimensions.forEach(d=>{L.push(`\n[${d.score}/${d.max}] ${d.name} (${d.status})\nTemuan: ${d.finding}`+(d.fix?`\nPerbaiki: ${d.fix}`:""));});
+  }
+  if(r.criticalProblems&&r.criticalProblems.length){
+    L.push("\nMASALAH KRITIS:");
+    r.criticalProblems.forEach((c,i)=>L.push(`${i+1}. ${c.title}\n   ${c.detail}`));
+  }
+  if(r.biggestOpportunity)L.push("\nPELUANG TERBESAR:\n"+r.biggestOpportunity);
+  if(r.firstStep)L.push("\nLANGKAH PERTAMA:\n"+r.firstStep);
+  const rw=r.rewrites||{};
+  if(rw.newTitle&&rw.newTitle.length)L.push("\nJUDUL BARU:\n- "+rw.newTitle.join("\n- "));
+  if(rw.newBio)L.push("\nBIO BARU:\n"+rw.newBio);
+  if(rw.skillTags&&rw.skillTags.length)L.push("\nSKILL TAGS:\n"+rw.skillTags.join(", "));
+  return L.join("\n");
+}
+
+/* ===== Events ===== */
+$("toggleText").addEventListener("click",()=>{
+  const w=$("textWrap"); w.hidden=!w.hidden;
+  $("toggleText").textContent=w.hidden?"+ atau tempel teks profil (lebih andal)":"− tutup teks profil";
+});
+$("analyzeBtn").addEventListener("click",analyze);
+$("pairBtn").addEventListener("click",doConnect);
+$("pairCode").addEventListener("keydown",e=>{if(e.key==="Enter")doConnect();});
+$("url").addEventListener("keydown",e=>{if(e.key==="Enter")analyze();});
+
+// Delegasi tombol "Salin" judul
+$("newTitle").addEventListener("click",e=>{const b=e.target.closest("[data-copy]");if(b)copy(b.getAttribute("data-copy"));});
+$("copyBio").addEventListener("click",()=>copy((LAST&&LAST.rewrites&&LAST.rewrites.newBio)||""));
+$("copyTags").addEventListener("click",()=>copy(((LAST&&LAST.rewrites&&LAST.rewrites.skillTags)||[]).join(", ")));
+$("copyAllBtn").addEventListener("click",()=>copy(reportText(LAST)));
+$("downloadBtn").addEventListener("click",()=>{
+  const blob=new Blob([reportText(LAST)],{type:"text/plain;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="upwork-analyzer-report.txt";a.click();URL.revokeObjectURL(a.href);
+});
+
+/* ===== Init ===== */
+checkBridge();
+setInterval(checkBridge, 8000); // pantau status bridge berkala
+</script>
+</body>
+</html>
