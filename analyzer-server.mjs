@@ -399,7 +399,11 @@ const server = http.createServer(async (req, res) => {
       let done = false, child = null, killer = null;
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
       const finish = () => { if (killer) clearTimeout(killer); clearInterval(ping); };
-      req.on('close', () => { if (!done) { done = true; finish(); if (child) killTree(child); } });
+      // Deteksi klien BENAR-BENAR putus pakai res.on('close'), BUKAN req.on('close').
+      // Di Node modern (v18+) req 'close' menyala begitu body request selesai dibaca
+      // (klien masih nyambung) → done=true prematur → `if (done) return` di bawah bikin
+      // claude TAK PERNAH di-spawn & response menggantung (UI mandek "0 token").
+      res.on('close', () => { if (!done) { done = true; finish(); if (child) killTree(child); } });
 
       // Auto-fetch profil dari URL via browser tersembunyi (cf-fetch) bila belum ada teks.
       await resolveProfile(body, msg => sse('progress', { phase: 'fetch', detail: msg, tokens: 0 }));
