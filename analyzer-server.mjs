@@ -171,8 +171,11 @@ function feedStdin(child, payload) {
 }
 
 // Bangun argumen claude (dipakai mode biasa & streaming).
-function claudeArgs(model, stream) {
-  const a = ['--print', '--model', MODELS.has(model) ? model : 'sonnet', '--allowedTools', 'WebSearch,WebFetch'];
+function claudeArgs(model, stream, allowWeb = true) {
+  const a = ['--print', '--model', MODELS.has(model) ? model : 'sonnet'];
+  // Web tools hanya berguna saat kita TIDAK punya teks profil (fallback cari via WebSearch).
+  // Saat profil sudah ada, matikan tool → Claude langsung menilai (lebih cepat, tak ada detour).
+  if (allowWeb) a.push('--allowedTools', 'WebSearch,WebFetch');
   if (stream) a.splice(1, 0, '--output-format', 'stream-json', '--verbose');
   return a;
 }
@@ -396,9 +399,9 @@ const server = http.createServer(async (req, res) => {
       const sse = (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} };
       sse('progress', { phase: 'start', detail: 'Menyiapkan analisa…', tokens: 0 });
 
-      let done = false, child = null, killer = null;
+      let done = false, child = null, killer = null, hb = null;
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
-      const finish = () => { if (killer) clearTimeout(killer); clearInterval(ping); };
+      const finish = () => { if (killer) clearTimeout(killer); clearInterval(ping); if (hb) clearInterval(hb); };
       // Deteksi klien BENAR-BENAR putus pakai res.on('close'), BUKAN req.on('close').
       // Di Node modern (v18+) req 'close' menyala begitu body request selesai dibaca
       // (klien masih nyambung) → done=true prematur → `if (done) return` di bawah bikin
@@ -411,16 +414,23 @@ const server = http.createServer(async (req, res) => {
 
       const rubric = (body.rubric && body.rubric.trim()) ? body.rubric : await loadRubric();
       const payload = [FIXED_PREAMBLE, rubric, OUTPUT_SHAPE, buildUserPrompt(body)].join('\n\n');
-      child = spawn('claude', claudeArgs(body.model, true), {
+      const hasText = !!(body.profileText && body.profileText.trim());
+      child = spawn('claude', claudeArgs(body.model, true, !hasText), {
         cwd: os.tmpdir(), shell: process.platform === 'win32', windowsHide: true,
       });
 
       const t0 = Date.now();
       let buf = '', err = '', finalText = null, tokens = 0;
+      // 600s: audit penuh (9 dimensi + rewrite) bisa makan 3-5 menit; 300s terlalu mepet.
+      // Koneksi tetap hidup lewat ping 15s, jadi aman menunggu lebih lama.
       killer = setTimeout(() => {
         if (done) return; done = true; killTree(child);
-        sse('error', { error: 'Timeout 300s, Claude tidak merespon.' }); res.end();
-      }, 300000);
+        sse('error', { error: 'Timeout 600s, Claude tidak merespon.' }); res.end();
+      }, 600000);
+      // Heartbeat: di mode stream-json, Claude sering "diam" (berpikir) lama sebelum token
+      // pertama. Kirim tanda hidup tiap 5s supaya label UI berubah jadi "sedang menilai"
+      // dan tidak terkesan beku di "Profil terbaca".
+      hb = setInterval(() => { if (!done) sse('progress', { phase: 'writing', detail: 'Claude sedang menilai profil…', tokens }); }, 5000);
 
       child.stdout.on('data', d => {
         buf += d.toString();
