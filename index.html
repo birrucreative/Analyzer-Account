@@ -80,6 +80,10 @@
   button.tiny{padding:5px 11px;font-size:12px;border-radius:8px;font-weight:600}
   .linkbtn{background:none;border:none;color:var(--blue);padding:0;font-weight:600;font-size:12.5px;cursor:pointer}
   .linkbtn:hover{background:none;text-decoration:underline}
+  .dlbtn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:1px solid var(--primary);
+    border-radius:var(--radius-sm);padding:10px 16px;font-weight:700;font-size:13.5px;text-decoration:none;margin:2px 0 14px}
+  .dlbtn:hover{background:var(--primary-d);border-color:var(--primary-d)}
+  .dlbtn .sz{font-weight:500;opacity:.85;font-size:11.5px}
   .collapse{margin-top:12px}
   .collapse[hidden]{display:none}
 
@@ -209,9 +213,10 @@
   <!-- Connect / pairing -->
   <div class="card" id="connectCard" style="display:none">
     <h2 class="ctitle">Hubungkan Claude lokal</h2>
-    <div class="hint">Mesin AI memakai Claude Code di komputermu. Nyalakan bridge lalu tempel kodenya.</div>
+    <div class="hint">Mesin AI memakai Claude Code di komputermu. Download bridge sekali, nyalakan, lalu tempel kodenya.</div>
+    <a class="dlbtn" href="analyzer-bridge.zip" download>⬇ Download bridge <span class="sz">ZIP · pasang sekali</span></a>
     <ol>
-      <li>Jalankan launcher: <code class="kbd">start-analyzer.bat</code> (Windows) atau <code class="kbd">start-analyzer.command</code> (Mac).</li>
+      <li>Ekstrak ZIP, lalu jalankan launcher: <code class="kbd">start-analyzer.bat</code> (Windows) atau <code class="kbd">start-analyzer.command</code> (Mac). Pertama kali otomatis <code class="kbd">npm install</code> sekali.</li>
       <li>Salin <b>KODE PAIRING</b> yang muncul di terminal.</li>
       <li>Tempel di bawah, klik <b>Hubungkan</b>.</li>
     </ol>
