@@ -1,0 +1,13 @@
+{
+  "name": "upwork-profile-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local AI bridge for the Upwork Profile Analyzer + hidden-browser Cloudflare fetch (cf-fetch.mjs).",
+  "scripts": {
+    "start": "node analyzer-server.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

@@ -207,6 +207,61 @@ function runClaude(userPrompt, model, rubric) {
   });
 }
 
+/* ============================================================
+   AUTO-FETCH PROFIL via cf-fetch.mjs (browser tersembunyi).
+   Saat user menempel LINK, Upwork diblok Cloudflare untuk fetch biasa.
+   cf-fetch.mjs meluncurkan Chrome ASLI (profil terakhir dibuka) dengan
+   jendela disembunyikan off-screen → lolos Cloudflare → cetak teks profil.
+   Opsional: butuh `npm install` (Playwright). Gagal = fallback diam.
+   ============================================================ */
+const CF_FETCH = path.join(DIR, 'cf-fetch.mjs');
+const CF_ENABLED = process.env.ANALYZER_CF_FETCH !== '0';
+
+function mapFetchStep(line) {
+  const m = line.replace(/^\[cf-fetch\]\s*/, '').trim();
+  if (/^goto/i.test(m)) return 'Membuka profil & melewati Cloudflare (browser tersembunyi)…';
+  if (/profil terakhir/i.test(m)) return 'Menyiapkan sesi browser…';
+  if (/^ok,/i.test(m)) return 'Profil terbaca, mulai menilai…';
+  if (/diblok|terlalu pendek|error|belum ada/i.test(m)) return 'Auto-fetch: ' + m;
+  return null;
+}
+
+function fetchProfileHidden(url, step) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [CF_FETCH, url], { cwd: DIR, windowsHide: true });
+    let out = '', errbuf = '';
+    const killer = setTimeout(() => { try { child.kill(); } catch {} reject(new Error('Auto-fetch timeout (180s).')); }, 180000);
+    child.stdout.on('data', d => (out += d));
+    child.stderr.on('data', d => {
+      errbuf += d.toString();
+      const lines = errbuf.split('\n'); errbuf = lines.pop();
+      for (const ln of lines) { const msg = mapFetchStep(ln); if (msg && step) step(msg); }
+    });
+    child.on('error', e => { clearTimeout(killer); reject(e.code === 'ENOENT' ? new Error('Node tidak ditemukan untuk cf-fetch.') : e); });
+    child.on('close', code => {
+      clearTimeout(killer);
+      if (code === 0 && out.trim().length > 300) resolve(out);
+      else reject(new Error('cf-fetch keluar dengan kode ' + code + (code === 3 ? ' (Playwright/Chrome belum disiapkan — jalankan `npm install`).' : '')));
+    });
+  });
+}
+
+// Lengkapi body.profileText dari URL via browser tersembunyi bila perlu.
+// Gagal = lanjut diam-diam (Claude coba WebSearch / kembalikan profileFound:false).
+async function resolveProfile(body, step) {
+  if (body.profileText && body.profileText.trim()) return;        // user sudah tempel teks
+  if (!(body.url && body.url.trim()) || !CF_ENABLED) return;      // tak ada url / fitur dimatikan
+  try {
+    step && step('Mengambil profil dari Upwork (browser tersembunyi)…');
+    const text = await fetchProfileHidden(body.url.trim(), step);
+    body.profileText = 'Halaman profil Upwork (hasil render; ada navigasi situs juga, fokus ke konten profil freelancer):\n\n' + text;
+    body.url = ''; // perlakukan sebagai paste agar prompt bersih
+    body._autofetched = true;
+  } catch (e) {
+    step && step('Auto-fetch gagal: ' + e.message + ' Coba tempel teks profil.');
+  }
+}
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -305,6 +360,7 @@ const server = http.createServer(async (req, res) => {
       }
       const t0 = Date.now();
       try {
+        await resolveProfile(body); // auto-fetch profil dari URL via browser tersembunyi bila perlu
         const rubric = (body.rubric && body.rubric.trim()) ? body.rubric : await loadRubric();
         const result = await runClaude(buildUserPrompt(body), body.model, rubric);
         console.log(`[analyze] ok in ${((Date.now() - t0) / 1000).toFixed(1)}s · model=${body.model || 'sonnet'} · score=${result && result.score}`);
@@ -340,22 +396,27 @@ const server = http.createServer(async (req, res) => {
       const sse = (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} };
       sse('progress', { phase: 'start', detail: 'Menyiapkan analisa…', tokens: 0 });
 
+      let done = false, child = null, killer = null;
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
+      const finish = () => { if (killer) clearTimeout(killer); clearInterval(ping); };
+      req.on('close', () => { if (!done) { done = true; finish(); if (child) killTree(child); } });
+
+      // Auto-fetch profil dari URL via browser tersembunyi (cf-fetch) bila belum ada teks.
+      await resolveProfile(body, msg => sse('progress', { phase: 'fetch', detail: msg, tokens: 0 }));
+      if (done) return; // klien menutup koneksi saat fetch
+
       const rubric = (body.rubric && body.rubric.trim()) ? body.rubric : await loadRubric();
       const payload = [FIXED_PREAMBLE, rubric, OUTPUT_SHAPE, buildUserPrompt(body)].join('\n\n');
-      const child = spawn('claude', claudeArgs(body.model, true), {
+      child = spawn('claude', claudeArgs(body.model, true), {
         cwd: os.tmpdir(), shell: process.platform === 'win32', windowsHide: true,
       });
 
       const t0 = Date.now();
-      let buf = '', err = '', finalText = null, tokens = 0, done = false;
-      const killer = setTimeout(() => {
+      let buf = '', err = '', finalText = null, tokens = 0;
+      killer = setTimeout(() => {
         if (done) return; done = true; killTree(child);
         sse('error', { error: 'Timeout 300s, Claude tidak merespon.' }); res.end();
       }, 300000);
-      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
-      const finish = () => { clearTimeout(killer); clearInterval(ping); };
-
-      req.on('close', () => { if (!done) { done = true; finish(); killTree(child); } });
 
       child.stdout.on('data', d => {
         buf += d.toString();
