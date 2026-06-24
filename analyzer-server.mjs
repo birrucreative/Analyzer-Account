@@ -30,7 +30,9 @@ const PAIR_TOKEN = (process.env.PAIR_TOKEN || crypto.randomBytes(4).toString('he
    Diturunkan dari artikel "Upwork Has Changed" + kerangka audit.
    FIXED: instruksi teknis output (tidak bisa diedit dari website).
    ============================================================ */
-const FIXED_PREAMBLE = `You are an elite Upwork Profile Consultant (10+ years placing freelancers in the top 1%). You audit a freelancer's Upwork profile and return a structured, brutally honest, actionable report. You ALWAYS return ONE JSON object and nothing else — no markdown, no code fences, no commentary before or after.`;
+const FIXED_PREAMBLE = `You are an elite Upwork Profile Consultant (10+ years placing freelancers in the top 1%). You audit a freelancer's Upwork profile and return a structured, brutally honest, actionable report. You ALWAYS return ONE JSON object and nothing else: no markdown, no code fences, no commentary before or after.
+
+WRITING RULE (mandatory, applies to EVERY string in your output, including the rewrites): never use the em-dash character. Replace it with a comma or a period, whichever fits the sentence. Use plain, natural punctuation only.`;
 
 // RUBRIC: logika penilaian — bisa diedit user dari website (disimpan ke rubric.txt).
 const DEFAULT_RUBRIC = `=== CONTEXT — How Upwork works now (2025-2026) ===
@@ -138,14 +140,19 @@ function extractJSON(raw) {
   return JSON.parse(json);
 }
 
+function truncate(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+// Bangun argumen claude (dipakai mode biasa & streaming).
+function claudeArgs(model, stream) {
+  const a = ['--print', '--model', MODELS.has(model) ? model : 'sonnet', '--allowedTools', 'WebSearch,WebFetch'];
+  if (stream) a.splice(1, 0, '--output-format', 'stream-json', '--verbose');
+  return a;
+}
+
 function runClaude(userPrompt, model, rubric) {
   return new Promise((resolve, reject) => {
     const payload = [FIXED_PREAMBLE, rubric || DEFAULT_RUBRIC, OUTPUT_SHAPE, userPrompt].join('\n\n');
-    const args = [
-      '--print',
-      '--model', MODELS.has(model) ? model : 'sonnet',
-      '--allowedTools', 'WebSearch,WebFetch', // izinkan akses web tanpa prompt (read-only)
-    ];
+    const args = claudeArgs(model, false);
     const child = spawn('claude', args, {
       cwd: os.tmpdir(),                 // netral: hindari CLAUDE.md proyek ikut terbaca
       shell: process.platform === 'win32',
@@ -281,6 +288,97 @@ const server = http.createServer(async (req, res) => {
         console.error('[analyze] error:', e.message);
         send(500, 'application/json', JSON.stringify({ error: e.message }));
       }
+    });
+    return;
+  }
+
+  // Versi STREAMING: meneruskan progres Claude (web search, dll) ke browser via SSE.
+  if (req.method === 'POST' && req.url === '/analyze-stream') {
+    if (!tokenOk()) return denied();
+    let raw = '';
+    req.on('data', c => (raw += c));
+    req.on('end', async () => {
+      let body;
+      try { body = JSON.parse(raw || '{}'); }
+      catch { return send(400, 'application/json', JSON.stringify({ error: 'Body bukan JSON valid.' })); }
+      if (!(body.url && body.url.trim()) && !(body.profileText && body.profileText.trim())) {
+        return send(400, 'application/json', JSON.stringify({ error: 'Isi link profil Upwork, atau tempel teks profilnya.' }));
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+        ...CORS,
+      });
+      const sse = (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} };
+      sse('progress', { phase: 'start', detail: 'Menyiapkan analisa…', tokens: 0 });
+
+      const rubric = (body.rubric && body.rubric.trim()) ? body.rubric : await loadRubric();
+      const payload = [FIXED_PREAMBLE, rubric, OUTPUT_SHAPE, buildUserPrompt(body)].join('\n\n');
+      const child = spawn('claude', claudeArgs(body.model, true), {
+        cwd: os.tmpdir(), shell: process.platform === 'win32', windowsHide: true,
+      });
+
+      const t0 = Date.now();
+      let buf = '', err = '', finalText = null, tokens = 0, done = false;
+      const killer = setTimeout(() => {
+        if (done) return; done = true; try { child.kill(); } catch {}
+        sse('error', { error: 'Timeout 300s — Claude tidak merespon.' }); res.end();
+      }, 300000);
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
+      const finish = () => { clearTimeout(killer); clearInterval(ping); };
+
+      req.on('close', () => { if (!done) { done = true; finish(); try { child.kill(); } catch {} } });
+
+      child.stdout.on('data', d => {
+        buf += d.toString();
+        let nl;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let ev; try { ev = JSON.parse(line); } catch { continue; }
+          if (ev.type === 'assistant' && ev.message) {
+            const u = ev.message.usage; if (u && u.output_tokens) tokens += u.output_tokens;
+            for (const b of (ev.message.content || [])) {
+              if (b.type === 'tool_use') {
+                if (b.name === 'WebSearch') sse('progress', { phase: 'search', detail: 'Menelusuri web: ' + truncate((b.input && b.input.query) || '', 64), tokens });
+                else if (b.name === 'WebFetch') sse('progress', { phase: 'fetch', detail: 'Membuka: ' + truncate((b.input && b.input.url) || '', 64), tokens });
+                else sse('progress', { phase: 'tool', detail: 'Memakai ' + b.name, tokens });
+              } else if (b.type === 'text' && b.text && b.text.trim()) {
+                sse('progress', { phase: 'writing', detail: 'Menyusun penilaian & rewrite…', tokens });
+              }
+            }
+          } else if (ev.type === 'user' && ev.message) {
+            sse('progress', { phase: 'read', detail: 'Membaca hasil pencarian…', tokens });
+          } else if (ev.type === 'result') {
+            if (ev.subtype === 'success' && !ev.is_error) { finalText = ev.result; if (ev.usage && ev.usage.output_tokens) tokens = ev.usage.output_tokens; }
+            else err = err || ('Claude error: ' + (ev.subtype || 'unknown'));
+          }
+        }
+      });
+      child.stderr.on('data', d => (err += d.toString()));
+      child.on('error', e => {
+        if (done) return; done = true; finish();
+        sse('error', { error: e.code === 'ENOENT' ? 'Perintah `claude` tidak ditemukan. Pastikan Claude Code terpasang & ada di PATH.' : e.message });
+        res.end();
+      });
+      child.on('close', code => {
+        if (done) return; done = true; finish();
+        if (finalText) {
+          try {
+            const result = extractJSON(finalText);
+            console.log(`[analyze-stream] ok in ${((Date.now() - t0) / 1000).toFixed(1)}s · model=${body.model || 'sonnet'} · score=${result && result.score}`);
+            sse('done', { result });
+          } catch (e) { sse('error', { error: e.message }); }
+        } else {
+          sse('error', { error: err.trim() || ('claude keluar dengan kode ' + code) });
+        }
+        res.end();
+      });
+      child.stdin.write(payload); child.stdin.end();
     });
     return;
   }

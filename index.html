@@ -3,134 +3,195 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Upwork Profile Analyzer — AI (login Claude lokal)</title>
+<title>Upwork Profile Analyzer · AI (login Claude lokal)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --green:#14a800; --green-d:#108a00; --ink:#0f1419; --muted:#5e6b73;
-    --line:#e4e9ec; --bg:#f6f8f9; --card:#ffffff;
-    --good:#14a800; --warn:#e08600; --crit:#d8443c; --blue:#1f57c3;
-    --shadow:0 1px 2px rgba(16,24,32,.04),0 8px 24px rgba(16,24,32,.06);
-    --radius:16px;
+    --bg:#f7f7f6; --card:#ffffff; --fg:#18181b; --muted:#6b7280; --muted-2:#9ca3af;
+    --border:#e8e8ea; --border-2:#f1f1f2;
+    --primary:#14a800; --primary-d:#0f8a00; --primary-tint:#eff8ec; --primary-line:#cfe7c5;
+    --good:#14a800; --good-tint:#eff8ec; --good-line:#cfe7c5;
+    --warn:#d97706; --warn-tint:#fdf4e7; --warn-line:#f1ddb9;
+    --crit:#dc2626; --crit-tint:#fdf1f0; --crit-line:#f3cfcc;
+    --blue:#2563eb; --blue-tint:#eef3fe; --blue-line:#d3e0fb;
+    --radius:14px; --radius-sm:10px; --radius-xs:8px;
+    --shadow-sm:0 1px 2px rgba(24,24,27,.05);
+    --shadow:0 1px 3px rgba(24,24,27,.06),0 10px 28px -10px rgba(24,24,27,.12);
+    --ring:0 0 0 3px rgba(20,168,0,.15);
   }
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
-    color:var(--ink); background:var(--bg); line-height:1.55; -webkit-font-smoothing:antialiased;
+    font-family:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--fg); background:var(--bg); line-height:1.55; -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(60rem 30rem at 80% -10%, #eef6ec 0%, rgba(238,246,236,0) 60%);
   }
-  .wrap{max-width:880px; margin:0 auto; padding:22px 18px 80px}
-  a{color:var(--blue)}
-  h1,h2,h3{line-height:1.2; margin:0}
-  .small{font-size:13px; color:var(--muted)}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .wrap{max-width:920px; margin:0 auto; padding:26px 18px 90px}
+  a{color:var(--blue);text-underline-offset:2px}
+  h1,h2,h3{line-height:1.25; margin:0}
+  .small{font-size:12.5px; color:var(--muted)}
+  .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .serif{font-family:"Instrument Serif",Georgia,serif}
 
   /* Header */
-  header.top{display:flex; align-items:center; gap:12px; margin:8px 0 18px}
-  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--green),#37c400);
-    display:grid;place-items:center;color:#fff;font-weight:800;font-size:19px;box-shadow:var(--shadow)}
-  header.top h1{font-size:21px}
-  header.top .sub{font-size:12.5px;color:var(--muted)}
-  .statusbadge{margin-left:auto;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;
-    border:1px solid var(--line); background:#fff; white-space:nowrap}
-  .statusbadge.ok{color:var(--green);border-color:#cdeac6;background:#f1f9ee}
-  .statusbadge.off{color:var(--warn);border-color:#f3e2c2;background:#fff8ec}
+  header.top{display:flex; align-items:center; gap:13px; margin:6px 0 22px}
+  .logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--primary),#43cf12);
+    display:grid;place-items:center;color:#fff;font-weight:700;font-size:21px;box-shadow:0 4px 12px -4px rgba(20,168,0,.5)}
+  header.top h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+  header.top .sub{font-size:12.5px;color:var(--muted);margin-top:1px}
+  .statusbadge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--muted);white-space:nowrap}
+  .statusbadge.ok{color:var(--primary);border-color:var(--primary-line);background:var(--primary-tint)}
+  .statusbadge.off{color:var(--warn);border-color:var(--warn-line);background:var(--warn-tint)}
 
-  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
-    box-shadow:var(--shadow); padding:18px; margin-bottom:16px}
-  .card h2{font-size:15px;letter-spacing:.01em;margin-bottom:4px}
-  .card .hint{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+  /* Card */
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); padding:20px; margin-bottom:16px}
+  .card>.sect-title:first-child{margin-top:0}
+  .card h2.ctitle{font-size:15.5px;font-weight:600;letter-spacing:-.01em;margin-bottom:3px}
+  .card .hint{font-size:12.5px;color:var(--muted);margin-bottom:15px;line-height:1.5}
 
-  label.fld{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 6px}
-  input[type=text],input[type=url],textarea,select{
-    width:100%; font:inherit; color:var(--ink); background:#fff;
-    border:1px solid var(--line); border-radius:11px; padding:11px 13px; outline:none;
+  /* Form */
+  label.fld{display:block;font-size:12.5px;font-weight:600;color:var(--fg);margin:0 0 7px}
+  input,textarea,select{
+    width:100%; font:inherit; color:var(--fg); background:var(--card);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 13px; outline:none;
     transition:border-color .15s, box-shadow .15s;
   }
-  input:focus,textarea:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(20,168,0,.12)}
-  textarea{min-height:150px;resize:vertical;line-height:1.5}
+  input::placeholder,textarea::placeholder{color:var(--muted-2)}
+  input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:var(--ring)}
+  textarea{min-height:150px;resize:vertical;line-height:1.55}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .row > *{flex:1;min-width:0}
 
-  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
-    border-radius:11px;padding:10px 16px;font-weight:600;transition:transform .05s, background .15s, border-color .15s}
-  button:active{transform:translateY(1px)}
-  button.primary{background:var(--green);border-color:var(--green);color:#fff}
-  button.primary:hover{background:var(--green-d)}
-  button.primary:disabled{opacity:.55;cursor:not-allowed}
-  button.ghost{background:#fff}
-  button.tiny{padding:5px 10px;font-size:12px;border-radius:9px;font-weight:600}
-
+  /* Buttons */
+  button{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--fg);
+    border-radius:var(--radius-sm);padding:9px 15px;display:inline-flex;align-items:center;gap:7px;
+    transition:background .15s,border-color .15s,box-shadow .15s,transform .04s}
+  button:hover{background:#fafafa}
+  button:focus-visible{outline:none;box-shadow:var(--ring)}
+  button:active{transform:translateY(.5px)}
+  button.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+  button.primary:hover{background:var(--primary-d);border-color:var(--primary-d)}
+  button.primary:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:transparent}
+  button.tiny{padding:5px 11px;font-size:12px;border-radius:8px;font-weight:600}
   .linkbtn{background:none;border:none;color:var(--blue);padding:0;font-weight:600;font-size:12.5px;cursor:pointer}
+  .linkbtn:hover{background:none;text-decoration:underline}
   .collapse{margin-top:12px}
   .collapse[hidden]{display:none}
 
-  /* Connect (pairing) */
-  #connectCard ol{margin:8px 0 12px;padding-left:18px;font-size:13px;color:var(--muted)}
-  #connectCard ol b{color:var(--ink)}
+  /* Connect */
+  #connectCard ol{margin:8px 0 13px;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.6}
+  #connectCard ol b{color:var(--fg)}
+  code.kbd{font-family:"JetBrains Mono",monospace;font-size:12px;background:var(--border-2);border:1px solid var(--border);
+    padding:1px 6px;border-radius:6px;color:var(--fg)}
 
   /* Loading */
-  #loading{display:none;align-items:center;gap:13px;justify-content:center;padding:26px}
+  #loading{display:none;align-items:flex-start;gap:14px;padding:18px 20px;background:var(--card);
+    border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:16px}
   #loading.show{display:flex}
-  .spinner{width:26px;height:26px;border-radius:50%;border:3px solid #e3ede0;border-top-color:var(--green);animation:spin .8s linear infinite}
+  .spinner{width:24px;height:24px;border-radius:50%;border:3px solid #e6efe3;border-top-color:var(--primary);
+    animation:spin .8s linear infinite;flex:0 0 auto;margin-top:1px}
   @keyframes spin{to{transform:rotate(360deg)}}
+  #loadPhase{font-weight:600;font-size:14.5px}
+  #loadSub{margin-top:2px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted)}
+  .loglist{margin-top:10px;display:flex;flex-direction:column;gap:3px}
+  .logline{font-size:12px;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:fadein .3s ease}
+  .logline:last-child{color:var(--muted)}
+  @keyframes fadein{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
 
   /* Result */
   #result{display:none}
-  #result.show{display:block}
-  .hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-  .gauge{position:relative;width:128px;height:128px;flex:0 0 auto}
+  #result.show{display:block;animation:rise .35s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .gauge{position:relative;width:140px;height:140px;flex:0 0 auto}
   .gauge svg{transform:rotate(-90deg)}
-  .gauge .num{position:absolute;inset:0;display:grid;place-items:center;flex-direction:column;text-align:center}
-  .gauge .num b{font-size:34px;line-height:1;display:block}
-  .gauge .num span{font-size:11px;color:var(--muted)}
-  .hero .verdict{flex:1;min-width:220px}
-  .hero .verdict h2{font-size:18px;margin-bottom:6px}
-  .hero .verdict p{margin:0;font-size:14px;color:var(--muted)}
+  .gauge .num{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+  .gauge .num b{font-size:42px;line-height:1;display:block;font-weight:700;letter-spacing:-.02em}
+  .gauge .num span{font-size:11px;color:var(--muted-2);font-family:"JetBrains Mono",monospace}
+  .verdict{flex:1;min-width:240px}
+  .eyebrow{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-size:17px;color:var(--muted);margin-bottom:3px}
+  .verdict h2{font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.3;margin-bottom:9px}
+  .verdict p{margin:0;font-size:14px;color:var(--muted);line-height:1.65}
 
-  .sect-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px}
+  .sect-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-2);margin:0 0 13px}
+  #strengthsBlock{margin-top:20px;border-top:1px solid var(--border-2);padding-top:18px}
 
-  .pill-list{display:flex;flex-direction:column;gap:8px}
-  .strength{display:flex;gap:9px;align-items:flex-start;background:#f1f9ee;border:1px solid #d8edd0;border-radius:11px;padding:10px 12px;font-size:13.5px}
-  .strength .ic{color:var(--good);font-weight:800}
+  .strength{display:flex;gap:11px;align-items:flex-start;padding:9px 0;font-size:13.5px;line-height:1.55;border-top:1px solid var(--border-2)}
+  .strength:first-child{border-top:none;padding-top:0}
+  .strength .ic{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--primary-tint);color:var(--primary);
+    display:grid;place-items:center;font-size:11px;font-weight:800;margin-top:1px}
 
-  .dim{border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px}
-  .dim .head{display:flex;align-items:center;gap:9px;margin-bottom:7px}
-  .dim .nm{font-weight:700;font-size:13.5px}
-  .dim .sc{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--muted)}
-  .dim .bar{height:7px;border-radius:5px;background:#eef2f4;overflow:hidden;margin-bottom:9px}
-  .dim .bar > i{display:block;height:100%;border-radius:5px}
-  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-  .s-good{background:var(--good)} .s-warn{background:var(--warn)} .s-crit{background:var(--crit)}
-  .dim .find{font-size:13px;margin:0 0 6px}
-  .dim .fix{font-size:13px;margin:0;color:#0a5b00;background:#f3faf0;border-left:3px solid var(--good);padding:7px 10px;border-radius:0 8px 8px 0}
-  .dim .fix b{color:#0a5b00}
+  /* Badge (status) */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;
+    border:1px solid transparent;white-space:nowrap}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .badge-good{color:var(--good);background:var(--good-tint);border-color:var(--good-line)}
+  .badge-warn{color:var(--warn);background:var(--warn-tint);border-color:var(--warn-line)}
+  .badge-crit{color:var(--crit);background:var(--crit-tint);border-color:var(--crit-line)}
 
-  .crit{border:1px solid #f1cfcc;background:#fdf4f3;border-radius:12px;padding:12px 13px;margin-bottom:9px}
-  .crit h3{font-size:13.5px;color:var(--crit);margin-bottom:3px}
-  .crit p{font-size:13px;margin:0;color:#7a2b25}
+  /* Dimension */
+  .dim{border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;margin-bottom:10px;background:var(--card);
+    transition:border-color .15s,box-shadow .15s}
+  .dim:hover{box-shadow:var(--shadow-sm);border-color:#dddde1}
+  .dim .head{display:flex;align-items:center;gap:10px;margin-bottom:11px;flex-wrap:wrap}
+  .dim .nm{font-weight:600;font-size:14px}
+  .dim .sc{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:600;color:var(--muted)}
+  .bar{height:6px;border-radius:999px;background:#eeeef0;overflow:hidden;margin-bottom:11px}
+  .bar>i{display:block;height:100%;border-radius:999px;width:0;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+  .find{font-size:13.5px;line-height:1.62;margin:0 0 10px;color:#3f3f46}
+  .fix{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.55;background:var(--primary-tint);
+    border:1px solid var(--primary-line);border-radius:var(--radius-xs);padding:9px 11px;color:#155c0a}
+  .fix-label{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;background:var(--primary);color:#fff;
+    padding:3px 8px;border-radius:999px;flex:0 0 auto;margin-top:1px}
 
-  .callout{border-radius:12px;padding:13px 15px;margin-bottom:10px;font-size:13.5px}
-  .callout.op{background:#eef4ff;border:1px solid #cfe0fb}
-  .callout.step{background:#fff8ec;border:1px solid #f3e2c2}
-  .callout b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-  .callout.op b{color:var(--blue)} .callout.step b{color:var(--warn)}
+  /* Critical */
+  .crit{border:1px solid var(--crit-line);background:var(--crit-tint);border-radius:var(--radius);padding:14px 15px;margin-bottom:10px}
+  .crit-h{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+  .crit-num{flex:0 0 auto;width:22px;height:22px;border-radius:7px;background:var(--crit);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+  .crit h3{font-size:14px;color:#991b1b;font-weight:600}
+  .crit p{font-size:13px;margin:0 0 0 32px;color:#7f1d1d;line-height:1.6}
 
-  .rw{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px}
-  .rw .rwhead{display:flex;align-items:center;margin-bottom:9px}
-  .rw .rwhead h3{font-size:13px;font-weight:700}
-  .rw .rwhead .tiny{margin-left:auto}
-  .titleopt{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px dashed var(--line)}
-  .titleopt:first-of-type{border-top:none}
-  .titleopt .t{flex:1;font-size:13.5px;font-weight:600}
-  .biobox{white-space:pre-wrap;font-size:13.5px;background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:11px 12px}
-  .chips{display:flex;flex-wrap:wrap;gap:7px}
-  .chip{background:#eef4ff;border:1px solid #d7e3fb;color:#1f3f8a;font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px}
+  /* Callout */
+  .callout{border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;font-size:14px;line-height:1.62}
+  .callout .clabel{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:5px}
+  .callout.op{background:var(--blue-tint);border:1px solid var(--blue-line)}
+  .callout.op .clabel{color:var(--blue)}
+  .callout.step{background:var(--warn-tint);border:1px solid var(--warn-line)}
+  .callout.step .clabel{color:var(--warn)}
 
-  .err{background:#fdf4f3;border:1px solid #f1cfcc;color:#a3322a;border-radius:11px;padding:12px 14px;font-size:13.5px;display:none;margin-top:12px}
+  /* Rewrites */
+  .rw{border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;margin-bottom:12px}
+  .rwhead{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .rwhead h3{font-size:13px;font-weight:600}
+  .rwhead .tiny{margin-left:auto}
+  .titleopt{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border-2)}
+  .titleopt:first-of-type{border-top:none;padding-top:0}
+  .titleopt .t{flex:1;font-size:14px;font-weight:500}
+  .biobox{white-space:pre-wrap;font-size:13.5px;line-height:1.68;background:#fafafa;border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:13px 14px;color:#27272a}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:var(--blue-tint);border:1px solid var(--blue-line);color:#1e40af;font-size:12.5px;font-weight:500;padding:5px 11px;border-radius:999px}
+
+  /* States */
+  .err{background:var(--crit-tint);border:1px solid var(--crit-line);color:#a3322a;border-radius:var(--radius-sm);
+    padding:12px 14px;font-size:13.5px;line-height:1.55;display:none;margin-top:13px;white-space:pre-line}
   .err.show{display:block}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f1419;color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
-  .toast.show{opacity:1}
-  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--fg);color:#fff;
+    padding:9px 17px;border-radius:999px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  footer{text-align:center;color:var(--muted-2);font-size:12px;margin-top:32px;line-height:1.6}
+
+  @media (max-width:560px){
+    .hero{gap:18px}
+    .gauge{width:112px;height:112px;margin:0 auto}
+    .verdict{min-width:100%;text-align:left}
+    .card{padding:16px}
+  }
 </style>
 </head>
 <body>
@@ -140,17 +201,17 @@
     <div class="logo">U</div>
     <div>
       <h1>Upwork Profile Analyzer</h1>
-      <div class="sub">Audit profil + skor + rewrite — ditenagai Claude di komputermu (tanpa API key)</div>
+      <div class="sub">Audit profil, skor, dan rewrite. Ditenagai Claude di komputermu (tanpa API key).</div>
     </div>
     <div class="statusbadge off" id="statusBadge">● mengecek…</div>
   </header>
 
-  <!-- Connect / pairing (muncul saat dibuka dari website, belum terhubung) -->
+  <!-- Connect / pairing -->
   <div class="card" id="connectCard" style="display:none">
-    <h2>Hubungkan Claude lokal</h2>
+    <h2 class="ctitle">Hubungkan Claude lokal</h2>
     <div class="hint">Mesin AI memakai Claude Code di komputermu. Nyalakan bridge lalu tempel kodenya.</div>
     <ol>
-      <li>Jalankan launcher: <b>start-analyzer.bat</b> (Windows) atau <b>start-analyzer.command</b> (Mac).</li>
+      <li>Jalankan launcher: <code class="kbd">start-analyzer.bat</code> (Windows) atau <code class="kbd">start-analyzer.command</code> (Mac).</li>
       <li>Salin <b>KODE PAIRING</b> yang muncul di terminal.</li>
       <li>Tempel di bawah, klik <b>Hubungkan</b>.</li>
     </ol>
@@ -158,33 +219,33 @@
       <input type="text" id="pairCode" placeholder="cth: A1B2C3D4" style="text-transform:uppercase" />
       <button class="primary" id="pairBtn" style="flex:0 0 auto">Hubungkan</button>
     </div>
-    <div class="small" id="pairStatus" style="margin-top:8px"></div>
+    <div class="small" id="pairStatus" style="margin-top:9px"></div>
   </div>
 
   <!-- Input -->
   <div class="card">
-    <h2>Profil yang mau dianalisa</h2>
-    <div class="hint">Tempel link profil Upwork. (Upwork kadang memblok akses otomatis — kalau hasil kosong, pakai opsi tempel teks di bawah.)</div>
+    <h2 class="ctitle">Profil yang mau dianalisa</h2>
+    <div class="hint">Tempel link profil Upwork. Upwork kadang memblok akses otomatis; kalau hasil kosong, pakai opsi tempel teks di bawah.</div>
 
     <label class="fld" for="url">Link profil Upwork</label>
     <input type="url" id="url" placeholder="https://www.upwork.com/freelancers/~xxxxxxxx" autocomplete="off" />
 
-    <button class="linkbtn" id="toggleText" style="margin-top:11px">+ atau tempel teks profil (lebih andal)</button>
+    <button class="linkbtn" id="toggleText" style="margin-top:12px">+ atau tempel teks profil (lebih andal)</button>
     <div class="collapse" id="textWrap" hidden>
-      <label class="fld" for="profileText" style="margin-top:6px">Teks profil (judul, overview/bio, skills, stats, services)</label>
+      <label class="fld" for="profileText" style="margin-top:8px">Teks profil (judul, overview/bio, skills, stats, services)</label>
       <textarea id="profileText" placeholder="Tempel judul, overview/bio, daftar skill, JSS, jumlah jobs &amp; review, jam terbang, negara, dan services di sini…"></textarea>
     </div>
 
-    <div class="row" style="margin-top:13px;align-items:flex-end">
-      <div style="flex:0 0 200px">
+    <div class="row" style="margin-top:14px;align-items:flex-end">
+      <div style="flex:0 0 210px">
         <label class="fld" for="model">Model</label>
         <select id="model">
-          <option value="sonnet">Sonnet — cepat &amp; seimbang</option>
-          <option value="opus">Opus — analisa paling dalam</option>
+          <option value="sonnet">Sonnet, cepat &amp; seimbang</option>
+          <option value="opus">Opus, analisa paling dalam</option>
         </select>
       </div>
       <div style="flex:1"></div>
-      <button class="primary" id="analyzeBtn" style="flex:0 0 auto;padding:12px 22px">Analisa Profil</button>
+      <button class="primary" id="analyzeBtn" style="flex:0 0 auto;padding:11px 22px">Analisa Profil</button>
     </div>
     <div class="err" id="err"></div>
   </div>
@@ -192,9 +253,10 @@
   <!-- Loading -->
   <div id="loading">
     <div class="spinner"></div>
-    <div>
-      <div style="font-weight:600">Claude sedang menganalisa profil…</div>
-      <div class="small" id="loadingNote">Menelusuri data profil + menilai 9 dimensi. Bisa 30–120 detik.</div>
+    <div style="flex:1;min-width:0">
+      <div id="loadPhase">Claude sedang menganalisa profil…</div>
+      <div id="loadSub">Thinking… · 0 token · 0s</div>
+      <div class="loglist" id="loadLog"></div>
     </div>
   </div>
 
@@ -203,39 +265,40 @@
     <div class="card">
       <div class="hero">
         <div class="gauge">
-          <svg width="128" height="128" viewBox="0 0 128 128">
-            <circle cx="64" cy="64" r="56" fill="none" stroke="#eef2f4" stroke-width="12"/>
-            <circle id="gaugeArc" cx="64" cy="64" r="56" fill="none" stroke="#14a800" stroke-width="12"
-              stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="351.86"/>
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="60" fill="none" stroke="#eeeef0" stroke-width="12"/>
+            <circle id="gaugeArc" cx="70" cy="70" r="60" fill="none" stroke="#14a800" stroke-width="12"
+              stroke-linecap="round" stroke-dasharray="376.99" stroke-dashoffset="376.99"/>
           </svg>
           <div class="num"><div><b id="scoreNum">0</b><span>/ 100</span></div></div>
         </div>
         <div class="verdict">
+          <div class="eyebrow">Verdict konsultan</div>
           <h2 id="verdict">—</h2>
           <p id="summary"></p>
         </div>
       </div>
 
       <div id="strengthsBlock">
-        <div class="sect-title">Kekuatan — jangan diubah</div>
-        <div class="pill-list" id="strengths"></div>
+        <div class="sect-title">Kekuatan (jangan diubah)</div>
+        <div id="strengths"></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="sect-title" style="margin-top:0">Penilaian per dimensi</div>
+      <div class="sect-title">Penilaian per dimensi</div>
       <div id="dimensions"></div>
     </div>
 
     <div class="card" id="critBlock">
-      <div class="sect-title" style="margin-top:0">Masalah paling kritis</div>
+      <div class="sect-title">Masalah paling kritis</div>
       <div id="criticalProblems"></div>
-      <div class="callout op" id="opBlock"><b>Peluang terbesar</b><span id="opportunity"></span></div>
-      <div class="callout step" id="stepBlock"><b>Langkah pertama hari ini</b><span id="firstStep"></span></div>
+      <div class="callout op" id="opBlock"><span class="clabel">Peluang terbesar</span><span id="opportunity"></span></div>
+      <div class="callout step" id="stepBlock"><span class="clabel">Langkah pertama hari ini</span><span id="firstStep"></span></div>
     </div>
 
     <div class="card" id="rewriteBlock">
-      <div class="sect-title" style="margin-top:0">Rewrite siap pakai</div>
+      <div class="sect-title">Rewrite siap pakai</div>
 
       <div class="rw">
         <div class="rwhead"><h3>Judul baru (pilih satu)</h3></div>
@@ -255,13 +318,14 @@
       </div>
 
       <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:6px">
+        <button class="primary" id="downloadPptxBtn">⬇ Unduh PPTX</button>
         <button class="ghost" id="downloadBtn">⬇ Unduh laporan (.txt)</button>
         <button class="ghost" id="copyAllBtn">Salin seluruh laporan</button>
       </div>
     </div>
   </div>
 
-  <footer>Privasi: profil & hasil tidak dikirim ke server pihak ketiga — hanya ke Claude di komputermu sendiri.</footer>
+  <footer>Privasi: profil &amp; hasil tidak dikirim ke server pihak ketiga. Hanya ke Claude di komputermu sendiri.</footer>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -269,14 +333,12 @@
 <script>
 /* ===== Helpers ===== */
 const $ = id => document.getElementById(id);
-let LAST = null; // hasil terakhir (untuk unduh/salin)
+let LAST = null;
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600);}
-function esc(s){return String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 async function copy(text){try{await navigator.clipboard.writeText(text);toast("Tersalin ✓");}catch{toast("Gagal menyalin");}}
 
 /* ===== Bridge ke Claude lokal (localhost) + kode pairing ===== */
-// Jika halaman ini DILAYANI oleh bridge (localhost), token disuntik & alamat = relatif.
-// Jika dibuka dari website (Vercel), bridge ada di http://localhost:8788 dan butuh kode pairing.
 const BRIDGE = (typeof window.__BRIDGE_LOCAL__ !== "undefined") ? "" : "http://localhost:8788";
 let PAIR = (window.__BRIDGE_TOKEN__ || localStorage.getItem("upwa_pair") || "").toUpperCase();
 function setPair(code){PAIR=(code||"").trim().toUpperCase();localStorage.setItem("upwa_pair",PAIR);}
@@ -300,7 +362,6 @@ async function checkBridge(){
   return PAIR_OK;
 }
 function updateConnectCard(){
-  // Sembunyikan kartu pairing saat dibuka lokal (sudah auto-pair) atau sudah terhubung.
   const need = !window.__BRIDGE_LOCAL__ && !PAIR_OK;
   $("connectCard").style.display = need ? "" : "none";
   if(PAIR) $("pairCode").value = PAIR;
@@ -311,11 +372,11 @@ async function doConnect(){
   await checkBridge();
   $("pairStatus").innerHTML = PAIR_OK
     ? '<b style="color:#14a800">Terhubung ✓</b>'
-    : (BRIDGE_UP ? '<b style="color:#c0392b">Kode salah — cek lagi di terminal.</b>'
+    : (BRIDGE_UP ? '<b style="color:#c0392b">Kode salah, cek lagi di terminal.</b>'
                  : '<b style="color:#c0392b">Bridge belum jalan. Jalankan start-analyzer.bat dulu.</b>');
 }
 
-/* ===== Analisa ===== */
+/* ===== Analisa (streaming SSE) ===== */
 async function analyze(){
   const url=$("url").value.trim();
   const profileText=$("profileText").value.trim();
@@ -324,7 +385,6 @@ async function analyze(){
 
   if(!url && !profileText){ showErr("Isi link profil Upwork, atau tempel teks profilnya."); return; }
 
-  // Pastikan bridge & pairing siap.
   const ok=await checkBridge();
   if(!BRIDGE_UP){
     showErr('⚠ Bridge Claude lokal belum jalan.\nJalankan start-analyzer.bat, salin KODE PAIRING, lalu klik "Hubungkan Claude lokal".');
@@ -333,36 +393,111 @@ async function analyze(){
   if(!ok){ showErr('⚠ Belum terhubung. Tempel KODE PAIRING dari terminal di kotak "Hubungkan Claude lokal".'); return; }
 
   setBusy(true);
+  const reqBody=JSON.stringify({url,profileText,model});
   try{
-    const r=await fetch(BRIDGE+"/analyze",{
-      method:"POST",
-      headers:authHeaders({"Content-Type":"application/json"}),
-      body:JSON.stringify({url,profileText,model})
-    });
-    const data=await r.json();
-    if(!r.ok || data.error){ throw new Error(data.error || ("HTTP "+r.status)); }
-    render(data.result);
+    const r=await fetch(BRIDGE+"/analyze-stream",{method:"POST",headers:authHeaders({"Content-Type":"application/json"}),body:reqBody});
+    if(r.status===404){
+      $("loadPhase").textContent="Menganalisa (mode non-stream)…";
+      const r2=await fetch(BRIDGE+"/analyze",{method:"POST",headers:authHeaders({"Content-Type":"application/json"}),body:reqBody});
+      const d2=await r2.json();
+      if(!r2.ok||d2.error) throw new Error(d2.error||("HTTP "+r2.status));
+      render(d2.result); return;
+    }
+    if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||("HTTP "+r.status)); }
+
+    const reader=r.body.getReader(), dec=new TextDecoder();
+    let sbuf="", result=null, errMsg=null;
+    while(true){
+      const {value,done}=await reader.read(); if(done) break;
+      sbuf+=dec.decode(value,{stream:true});
+      let i;
+      while((i=sbuf.indexOf("\n\n"))>=0){
+        const frame=sbuf.slice(0,i); sbuf=sbuf.slice(i+2);
+        const ev=parseSSE(frame); if(!ev) continue;
+        if(ev.event==="progress") onProgress(ev.data);
+        else if(ev.event==="done") result=ev.data.result;
+        else if(ev.event==="error") errMsg=ev.data.error;
+      }
+    }
+    if(errMsg) throw new Error(errMsg);
+    if(!result) throw new Error("Stream berakhir tanpa hasil.");
+    render(result);
   }catch(e){
     showErr("Gagal: "+e.message);
   }finally{
     setBusy(false);
   }
 }
+
+/* ===== Status live ===== */
+const VERBS=["Thinking","Unfurling","Menelaah","Menimbang","Menganalisa","Menyelaraskan","Merangkai"];
+const PHASE_LABEL={start:"Menyiapkan analisa…",search:"Menelusuri web",fetch:"Membuka halaman",read:"Membaca hasil",writing:"Menyusun penilaian…",tool:"Memproses…"};
+let _verbI=0,_verbT=null,_elapT=null,_t0=0,_tok=0,_lastDetail="";
+function parseSSE(frame){
+  let event="message",data="";
+  for(const l of frame.split("\n")){
+    if(l.startsWith("event:")) event=l.slice(6).trim();
+    else if(l.startsWith("data:")) data+=l.slice(5).trim();
+  }
+  if(!data) return null;
+  try{ return {event,data:JSON.parse(data)}; }catch{ return null; }
+}
+function onProgress(d){
+  if(typeof d.tokens==="number" && d.tokens) _tok=d.tokens;
+  $("loadPhase").textContent=d.detail||PHASE_LABEL[d.phase]||"Memproses…";
+  if(d.detail && d.detail!==_lastDetail && d.phase!=="start"){
+    _lastDetail=d.detail;
+    const div=document.createElement("div"); div.className="logline"; div.textContent="• "+d.detail;
+    $("loadLog").appendChild(div);
+    while($("loadLog").children.length>4) $("loadLog").removeChild($("loadLog").firstChild);
+  }
+  paintSub();
+}
+function paintSub(){
+  const s=Math.max(0,Math.round((Date.now()-_t0)/1000));
+  $("loadSub").textContent=`${VERBS[_verbI]}… · ${_tok} token · ${s}s`;
+}
+function startProgress(){
+  _t0=Date.now(); _tok=0; _lastDetail=""; _verbI=0;
+  $("loadPhase").textContent="Menyiapkan analisa…"; $("loadLog").innerHTML=""; paintSub();
+  stopProgress();
+  _verbT=setInterval(()=>{_verbI=(_verbI+1)%VERBS.length;paintSub();},1700);
+  _elapT=setInterval(paintSub,1000);
+}
+function stopProgress(){ if(_verbT)clearInterval(_verbT); if(_elapT)clearInterval(_elapT); _verbT=_elapT=null; }
+
 function setBusy(b){
   $("analyzeBtn").disabled=b;
   $("analyzeBtn").textContent=b?"Menganalisa…":"Analisa Profil";
   $("loading").classList.toggle("show",b);
-  if(b) $("result").classList.remove("show");
+  if(b){ $("result").classList.remove("show"); startProgress(); }
+  else stopProgress();
 }
 function showErr(msg){const e=$("err");e.textContent=msg;e.classList.add("show");}
 
 /* ===== Render hasil ===== */
-function scoreColor(s){ if(s>=75)return"#14a800"; if(s>=50)return"#e08600"; return"#d8443c"; }
-function statusClass(st){ return st==="good"?"s-good":st==="warn"||st==="warning"?"s-warn":"s-crit"; }
-function statusColor(st){ return st==="good"?"#14a800":(st==="warn"||st==="warning")?"#e08600":"#d8443c"; }
+function scoreColor(s){ if(s>=75)return"#14a800"; if(s>=50)return"#d97706"; return"#dc2626"; }
+function statusClass(st){ return st==="good"?"good":(st==="warn"||st==="warning")?"warn":"crit"; }
+function statusColor(st){ return st==="good"?"#14a800":(st==="warn"||st==="warning")?"#d97706":"#dc2626"; }
+function statusLabel(st){ return st==="good"?"Baik":(st==="warn"||st==="warning")?"Perlu dibenahi":"Kritis"; }
+
+/* Aturan: em-dash (—) tidak boleh muncul → ganti koma/titik. Jaring pengaman bila Claude lolos. */
+function deDash(s){
+  return String(s)
+    .replace(/\s*—\s*/g, ", ")
+    .replace(/\s*–\s*/g, ", ")
+    .replace(/,\s*([.,;:!?])/g, "$1");
+}
+function deepDeDash(v){
+  if(typeof v==="string") return deDash(v);
+  if(Array.isArray(v)) return v.map(deepDeDash);
+  if(v && typeof v==="object"){ const o={}; for(const k in v) o[k]=deepDeDash(v[k]); return o; }
+  return v;
+}
 
 function render(r){
   if(!r){ showErr("Hasil kosong dari Claude."); return; }
+  r=deepDeDash(r);
   LAST=r;
 
   if(r.profileFound===false){
@@ -372,8 +507,7 @@ function render(r){
   }
 
   const score=Math.max(0,Math.min(100,Math.round(r.score||0)));
-  // Gauge
-  const C=2*Math.PI*56; // ~351.86
+  const C=2*Math.PI*60; // r=60
   $("gaugeArc").setAttribute("stroke-dasharray",C.toFixed(2));
   $("gaugeArc").setAttribute("stroke-dashoffset",(C*(1-score/100)).toFixed(2));
   $("gaugeArc").setAttribute("stroke",scoreColor(score));
@@ -382,30 +516,32 @@ function render(r){
   $("summary").textContent=r.summary||"";
 
   // Strengths
-  const sb=$("strengths");
   const str=Array.isArray(r.strengths)?r.strengths.filter(Boolean):[];
   $("strengthsBlock").style.display = str.length?"":"none";
-  sb.innerHTML=str.map(s=>`<div class="strength"><span class="ic">✓</span><span>${esc(s)}</span></div>`).join("");
+  $("strengths").innerHTML=str.map(s=>`<div class="strength"><span class="ic">✓</span><span>${esc(s)}</span></div>`).join("");
 
   // Dimensions
   const dims=Array.isArray(r.dimensions)?r.dimensions:[];
   $("dimensions").innerHTML=dims.map(d=>{
     const max=d.max||100, sc=d.score||0, pct=Math.max(0,Math.min(100,Math.round(sc/max*100)));
+    const cls=statusClass(d.status);
     return `<div class="dim">
       <div class="head">
-        <span class="dot ${statusClass(d.status)}"></span>
         <span class="nm">${esc(d.name)}</span>
+        <span class="badge badge-${cls}">${statusLabel(d.status)}</span>
         <span class="sc">${sc} / ${max}</span>
       </div>
-      <div class="bar"><i style="width:${pct}%;background:${statusColor(d.status)}"></i></div>
+      <div class="bar"><i data-w="${pct}" style="background:${statusColor(d.status)}"></i></div>
       <p class="find">${esc(d.finding)}</p>
-      ${d.fix?`<p class="fix"><b>Perbaiki:</b> ${esc(d.fix)}</p>`:""}
+      ${d.fix?`<div class="fix"><span class="fix-label">Perbaiki</span><span>${esc(d.fix)}</span></div>`:""}
     </div>`;
   }).join("");
+  // animasikan bar tumbuh
+  requestAnimationFrame(()=>document.querySelectorAll("#dimensions .bar > i").forEach(i=>{i.style.width=i.getAttribute("data-w")+"%";}));
 
   // Critical problems
   const cp=Array.isArray(r.criticalProblems)?r.criticalProblems:[];
-  $("criticalProblems").innerHTML=cp.map((c,i)=>`<div class="crit"><h3>${i+1}. ${esc(c.title)}</h3><p>${esc(c.detail)}</p></div>`).join("");
+  $("criticalProblems").innerHTML=cp.map((c,i)=>`<div class="crit"><div class="crit-h"><span class="crit-num">${i+1}</span><h3>${esc(c.title)}</h3></div><p>${esc(c.detail)}</p></div>`).join("");
   $("critBlock").style.display=(cp.length||r.biggestOpportunity||r.firstStep)?"":"none";
   $("opBlock").style.display=r.biggestOpportunity?"":"none";
   $("stepBlock").style.display=r.firstStep?"":"none";
@@ -429,7 +565,7 @@ function animateNum(el,target){
   const t=setInterval(()=>{cur+=step; if(cur>=target){cur=target;clearInterval(t);} el.textContent=cur;},18);
 }
 
-/* ===== Laporan teks (unduh / salin) ===== */
+/* ===== Laporan teks ===== */
 function reportText(r){
   if(!r) return "";
   const L=[];
@@ -465,7 +601,6 @@ $("pairBtn").addEventListener("click",doConnect);
 $("pairCode").addEventListener("keydown",e=>{if(e.key==="Enter")doConnect();});
 $("url").addEventListener("keydown",e=>{if(e.key==="Enter")analyze();});
 
-// Delegasi tombol "Salin" judul
 $("newTitle").addEventListener("click",e=>{const b=e.target.closest("[data-copy]");if(b)copy(b.getAttribute("data-copy"));});
 $("copyBio").addEventListener("click",()=>copy((LAST&&LAST.rewrites&&LAST.rewrites.newBio)||""));
 $("copyTags").addEventListener("click",()=>copy(((LAST&&LAST.rewrites&&LAST.rewrites.skillTags)||[]).join(", ")));
@@ -475,10 +610,101 @@ $("downloadBtn").addEventListener("click",()=>{
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
   a.download="upwork-analyzer-report.txt";a.click();URL.revokeObjectURL(a.href);
 });
+$("downloadPptxBtn").addEventListener("click",downloadPptx);
+
+/* ===== Export PPTX (PptxGenJS, dimuat saat dibutuhkan) ===== */
+let _pptxLoading=null;
+function loadPptxLib(){
+  if(window.PptxGenJS) return Promise.resolve();
+  if(_pptxLoading) return _pptxLoading;
+  _pptxLoading=new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
+    s.onload=()=>res(); s.onerror=()=>{_pptxLoading=null;rej(new Error("Gagal memuat library PPTX (butuh internet)."));};
+    document.head.appendChild(s);
+  });
+  return _pptxLoading;
+}
+async function downloadPptx(){
+  if(!LAST){ toast("Belum ada hasil untuk diekspor."); return; }
+  const btn=$("downloadPptxBtn"), old=btn.textContent; btn.disabled=true; btn.textContent="Menyiapkan PPTX…";
+  try{ await loadPptxLib(); await buildPptx(LAST); toast("PPTX diunduh ✓"); }
+  catch(e){ toast(e.message||"Gagal membuat PPTX"); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+function buildPptx(r){
+  const P=new window.PptxGenJS();
+  P.defineLayout({name:"W",width:13.33,height:7.5}); P.layout="W";
+  const GREEN="14A800",INK="18181B",MUT="6B7280",CRIT="DC2626",WARN="D97706",BLUE="2563EB";
+  const sc=Math.max(0,Math.min(100,Math.round(r.score||0)));
+  const scColor=sc>=75?GREEN:sc>=50?WARN:CRIT;
+  const rw=r.rewrites||{};
+
+  let s=P.addSlide(); s.background={color:"FFFFFF"};
+  s.addText("UPWORK PROFILE ANALYSIS",{x:0.7,y:0.7,w:11,h:0.5,fontFace:"Arial",fontSize:14,bold:true,color:MUT,charSpacing:2});
+  s.addText(String(sc),{x:0.5,y:1.5,w:4.2,h:2.8,fontFace:"Arial",fontSize:170,bold:true,color:scColor,align:"center"});
+  s.addText("/ 100",{x:0.5,y:4.3,w:4.2,h:0.5,fontFace:"Arial",fontSize:20,color:MUT,align:"center"});
+  s.addText(r.verdict||"",{x:5.1,y:1.9,w:7.5,h:3.6,fontFace:"Arial",fontSize:18,color:INK,valign:"top"});
+  s.addText("Upwork Profile Analyzer",{x:0.7,y:6.85,w:11,h:0.4,fontFace:"Arial",fontSize:10,color:MUT});
+
+  s=P.addSlide();
+  s.addText("Ringkasan",{x:0.7,y:0.5,w:12,h:0.6,fontFace:"Arial",fontSize:26,bold:true,color:INK});
+  s.addText(r.summary||"",{x:0.7,y:1.3,w:11.9,h:1.7,fontFace:"Arial",fontSize:14,color:INK,valign:"top"});
+  if((r.strengths||[]).length){
+    s.addText("Kekuatan",{x:0.7,y:3.15,w:12,h:0.5,fontFace:"Arial",fontSize:16,bold:true,color:GREEN});
+    s.addText((r.strengths||[]).map(t=>({text:t,options:{bullet:true}})),{x:0.7,y:3.7,w:11.9,h:3,fontFace:"Arial",fontSize:13,color:INK,valign:"top",lineSpacingMultiple:1.1});
+  }
+
+  s=P.addSlide();
+  s.addText("Penilaian per dimensi",{x:0.7,y:0.5,w:12,h:0.6,fontFace:"Arial",fontSize:26,bold:true,color:INK});
+  const hdr={bold:true,color:"FFFFFF",fill:{color:INK}};
+  const rows=[[{text:"Dimensi",options:hdr},{text:"Skor",options:{...hdr,align:"center"}},{text:"Status",options:hdr}]];
+  (r.dimensions||[]).forEach(d=>{
+    const stc=d.status==="good"?GREEN:(d.status==="warn"||d.status==="warning")?WARN:CRIT;
+    rows.push([{text:d.name||""},{text:`${d.score}/${d.max}`,options:{align:"center"}},{text:String(d.status||"").toUpperCase(),options:{color:stc,bold:true}}]);
+  });
+  s.addTable(rows,{x:0.7,y:1.3,w:11.9,colW:[7.4,2.2,2.3],fontFace:"Arial",fontSize:12,border:{type:"solid",color:"E8E8EA",pt:1},rowH:0.42,valign:"middle"});
+
+  if((r.criticalProblems||[]).length){
+    s=P.addSlide();
+    s.addText("Masalah paling kritis",{x:0.7,y:0.5,w:12,h:0.6,fontFace:"Arial",fontSize:26,bold:true,color:CRIT});
+    let y=1.4;
+    (r.criticalProblems||[]).forEach((c,i)=>{
+      s.addText(`${i+1}. ${c.title||""}`,{x:0.7,y,w:11.9,h:0.5,fontFace:"Arial",fontSize:15,bold:true,color:INK}); y+=0.52;
+      s.addText(c.detail||"",{x:1.0,y,w:11.6,h:0.9,fontFace:"Arial",fontSize:12,color:MUT,valign:"top"}); y+=1.05;
+    });
+  }
+
+  s=P.addSlide();
+  s.addText("Peluang & langkah pertama",{x:0.7,y:0.5,w:12,h:0.6,fontFace:"Arial",fontSize:26,bold:true,color:INK});
+  s.addText("PELUANG TERBESAR",{x:0.7,y:1.4,w:12,h:0.4,fontFace:"Arial",fontSize:12,bold:true,color:BLUE,charSpacing:1});
+  s.addText(r.biggestOpportunity||"",{x:0.7,y:1.85,w:11.9,h:1.8,fontFace:"Arial",fontSize:14,color:INK,valign:"top"});
+  s.addText("LANGKAH PERTAMA HARI INI",{x:0.7,y:3.95,w:12,h:0.4,fontFace:"Arial",fontSize:12,bold:true,color:WARN,charSpacing:1});
+  s.addText(r.firstStep||"",{x:0.7,y:4.4,w:11.9,h:2,fontFace:"Arial",fontSize:14,color:INK,valign:"top"});
+
+  s=P.addSlide();
+  s.addText("Rewrite: judul & bio",{x:0.7,y:0.5,w:12,h:0.6,fontFace:"Arial",fontSize:26,bold:true,color:INK});
+  if((rw.newTitle||[]).length){
+    s.addText("Opsi judul baru",{x:0.7,y:1.25,w:12,h:0.4,fontFace:"Arial",fontSize:14,bold:true,color:GREEN});
+    s.addText((rw.newTitle||[]).map(t=>({text:t,options:{bullet:true}})),{x:0.7,y:1.72,w:11.9,h:1.5,fontFace:"Arial",fontSize:13,color:INK,valign:"top",lineSpacingMultiple:1.1});
+  }
+  if(rw.newBio){
+    s.addText("Overview / Bio (client-first)",{x:0.7,y:3.35,w:12,h:0.4,fontFace:"Arial",fontSize:14,bold:true,color:GREEN});
+    s.addText(rw.newBio,{x:0.7,y:3.82,w:11.9,h:3.1,fontFace:"Arial",fontSize:12,color:INK,valign:"top",lineSpacingMultiple:1.1});
+  }
+
+  if((rw.skillTags||[]).length){
+    s=P.addSlide();
+    s.addText("Skill tags",{x:0.7,y:0.5,w:12,h:0.6,fontFace:"Arial",fontSize:26,bold:true,color:INK});
+    s.addText((rw.skillTags||[]).join("   ·   "),{x:0.7,y:1.5,w:11.9,h:3,fontFace:"Arial",fontSize:18,color:BLUE,valign:"top",lineSpacingMultiple:1.3});
+  }
+
+  return P.writeFile({fileName:"upwork-analyzer-report.pptx"});
+}
 
 /* ===== Init ===== */
 checkBridge();
-setInterval(checkBridge, 8000); // pantau status bridge berkala
+setInterval(checkBridge, 8000);
 </script>
 </body>
 </html>
